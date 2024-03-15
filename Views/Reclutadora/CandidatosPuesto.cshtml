@@ -1,0 +1,38 @@
+﻿@model IEnumerable<Candidate_Recruiter.Models.Candidato>
+
+@{
+    ViewData["Title"] = "CandidatosPuesto";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<link href="/css/ViewPuestos.css" rel="stylesheet" />
+
+<h1 class="titulo">Candidatos al puesto</h1>
+
+<section class="Puestos-Laborales">
+
+    @{
+        foreach (var item in Model)
+        {
+            <article class="Descripcion-Puesto">
+
+                <dl>
+                    <dt>Cargo:</dt>
+                    <dd>@Html.DisplayFor(modelItem => item.Nombre)</dd>
+                    <dt>Cedula:</dt>
+                    <dd>@Html.DisplayFor(modelItem => item.Cedula)</dd>
+                    <dt>Correo:</dt>
+                    <dd>@Html.DisplayFor(modelItem => item.Correo)</dd>
+                </dl>
+                <br />
+                <br />
+            </article>
+        }
+    }
+
+    <h3 style="font-size: 16px; color: #E5E5E6;">@ViewBag.mensaje</h3>
+
+</section>
+
+
