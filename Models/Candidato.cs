@@ -9,10 +9,12 @@ namespace Candidate_Recruiter.Models
 {
     public class Candidato: IObserver
     {
+        public Guid Id { get; set; }
         public string Cedula { get; set; }
         public string Nombre { get; set; }
         public string Correo { get; set; }
         public double AspiracionSalarialMinima { get; set;}
+        public List<CandidatoPuesto> CandidatoPuestos { get; set; }
 
         public bool EnviarCorreo(Puesto puestoInteresado)
         {

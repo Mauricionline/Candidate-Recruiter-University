@@ -1,4 +1,4 @@
-﻿@model IEnumerable<Candidate_Recruiter.Models.IObserver>
+﻿@model IEnumerable<Candidate_Recruiter.Models.Candidato>
 
 @{
     ViewData["Title"] = "ViewCandidatos";
@@ -33,10 +33,10 @@
                     <dd>@Html.DisplayFor(modelItem => item.AspiracionSalarialMinima)</dd>
                 </dl>
 
-                @Html.ActionLink("Suscribir a puesto", "SuscripcionPuesto", "Reclutadora", new { posicion }, new { @class = "btn-editar" })
+                @Html.ActionLink("Suscribir a puesto", "SuscripcionPuesto", "Reclutadora", new { candidatoId = item.Id }, new { @class = "btn-editar" })
                 <br />
                 <br />
-                @Html.ActionLink("Desuscribir de puesto", "DesuscripcionPuesto", "Reclutadora", new { posicion }, new { @class = "btn-desuscribir" })
+                @Html.ActionLink("Desuscribir de puesto", "DesuscripcionPuesto", "Reclutadora", new { candidatoId = item.Id }, new { @class = "btn-desuscribir" })
             </article>
         }
     }

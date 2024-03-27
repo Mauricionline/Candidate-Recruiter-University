@@ -4,32 +4,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Candidate_Recruiter.Models;
+using Candidate_Recruiter.DataBase.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Candidate_Recruiter.Controllers
 {
     public class ReclutadoraController : Controller
     {
-        private Reclutadora reclutadora = Reclutadora.GetReclutadora();
+        //private Reclutadora reclutadora = Reclutadora.GetReclutadora();
         private List<Candidato> candidatos = new List<Candidato>();
         private List<Puesto> puestos = new List<Puesto>();
-        public ReclutadoraController()
+        private readonly ICandidatoRepository _candidatoRepository;
+        private readonly IPuestoRepository _puestoRepository;
+        private readonly ICandidatoPuestoRepository _candidatoPuestoRepository;
+        public ReclutadoraController(IPuestoRepository puestoRepository, ICandidatoRepository candidatoRepository, ICandidatoPuestoRepository candidatoPuestoRepository)
         {
-            if (CandidatosCrud.Candidatos.Count == 0) {
-                Agregar10Candidatos();
-                foreach (var item in candidatos)
-                {
-                    CandidatosCrud.AgregarCandidato(item);
-                }
-            }
-
-            if(PuestosCrud.Puestos.Count == 0)
-            {
-                Agregar5Puestos();
-                foreach (var item in puestos)
-                {
-                    PuestosCrud.AgregarPuesto(item);
-                }
-            }
+            _puestoRepository = puestoRepository;
+            _candidatoRepository = candidatoRepository;
+            _candidatoPuestoRepository = candidatoPuestoRepository;
         }
 
         public IActionResult Index()
@@ -42,9 +34,9 @@ namespace Candidate_Recruiter.Controllers
             return View();
         }
 
-        public IActionResult ProcessCandidatosForm()
+        public async Task<IActionResult> ProcessCandidatosForm()
         {
-            CandidatosCrud.AgregarCandidato(new Candidato()
+            await _candidatoRepository.Add(new Candidato()
             {
                 Cedula = Request.Form["cedula"],
                 Nombre = Request.Form["nombre"],
@@ -65,9 +57,9 @@ namespace Candidate_Recruiter.Controllers
             return View();
         }
 
-        public IActionResult ProcessPuestosForm()
+        public async Task<IActionResult> ProcessPuestosForm()
         {
-            PuestosCrud.AgregarPuesto(new Puesto()
+            await _puestoRepository.Add(new Puesto()
             {
                 Codigo = Request.Form["codigo"],
                 Nombre = Request.Form["puesto"],
@@ -78,190 +70,86 @@ namespace Candidate_Recruiter.Controllers
             return RedirectToAction("MessageAfterProcessing");
         }
 
-        public IActionResult ViewCandidatos()
+        public async Task<IActionResult> ViewCandidatos()
         {
-            var candidatos = from candidato in CandidatosCrud.Candidatos
-                             select candidato;
+            //var candidatos = from candidato in CandidatosCrud.Candidatos
+            //                 select candidato;
 
-            ViewBag.mensaje = CandidatosCrud.Candidatos.Count > 0 ? "" : "No hay ningun candidato registrado";
+            var candidatos = await _candidatoRepository.GetAll().ToListAsync();
+
+            ViewBag.mensaje = candidatos.Count > 0 ? "" : "No hay ningun candidato registrado";
 
             return View(candidatos);
         }
 
-        public IActionResult ViewPuestos()
+        public async Task<IActionResult> ViewPuestos()
         {
-            var puestos = from puesto in PuestosCrud.Puestos
-                          select puesto;
+            //var puestos = from puesto in PuestosCrud.Puestos
+            //              select puesto;
 
-            ViewBag.mensaje = PuestosCrud.Puestos.Count > 0 ? "" : "No hay ningun puesto registrado";
+            var puestos = await _puestoRepository.GetAll().ToListAsync();
+
+            ViewBag.mensaje = puestos.Count > 0 ? "" : "No hay ningun puesto registrado";
 
             return View(puestos);
         }
 
-        public IActionResult EditPuesto(int posicion)
+        public async Task<IActionResult>EditPuesto(Guid puestoId)
         {
-            Puesto puesto = PuestosCrud.Puestos[posicion];
-            ViewBag.posicion = posicion;
+            var puesto = await _puestoRepository.GetAll().Where(x=> x.Id == puestoId).FirstOrDefaultAsync();
+            ViewBag.puestoId = puestoId;
             return View(puesto);
         }
 
-        public IActionResult ProcessEditPuesto()
+        public async Task<IActionResult> ProcessEditPuesto()
         {
-            int posicion = int.Parse(Request.Form["posicion"]);
+            string codigo = (Request.Form["codigo"]);
 
-            PuestosCrud.EditarPuesto(posicion, Double.Parse(Request.Form["salario"]), Request.Form["Status"]);
-
-            // Desencadenamiento del patron observer
-            reclutadora.VerificarStatusDePuesto(PuestosCrud.Puestos[posicion]);
+            var found = await _puestoRepository.BuscarPorCodigo(codigo);
+            found.Salario = Double.Parse(Request.Form["salario"]);
+            found.Status = Request.Form["Status"];
 
             return RedirectToAction("ViewPuestos");
         }
 
-        public IActionResult SuscripcionPuesto(int posicion)
+        public async Task<IActionResult> SuscripcionPuesto(Guid candidatoId)
         {
-            var puestos = from puesto in reclutadora.GetPuestosNoSuscritos(CandidatosCrud.Candidatos[posicion].Cedula)
-                          select puesto;
-
-            ViewBag.posicion = posicion;
-            ViewBag.mensaje = reclutadora.GetPuestosNoSuscritos(CandidatosCrud.Candidatos[posicion].Cedula).Count > 0 ? "" : "Al parecer el candidato esta suscrito a todos los puestos";
+            var puestos = await _candidatoPuestoRepository.PuestosNoSuscritosPorCandidato(candidatoId);
+            ViewBag.candidatoId = candidatoId;
+            ViewBag.mensaje = puestos.Count > 0 ? "" : "Al parecer el candidato esta suscrito a todos los puestos";
 
             return View(puestos);
         }
 
-        public IActionResult ProcessSuscripcion(string codigo, int posicion)
+        public async Task<IActionResult> ProcessSuscripcion(Guid puestoId, Guid candidatoId)
         {
-            Puesto puesto = PuestosCrud.BuscarPuestoPorCodigo(codigo);
-
-            // Si el candidato se suscribe a un determinado puesto y el mismo esta vacante al momento de suscribirse
-            // tambien se le mandara el correo
-            reclutadora.Suscribir(CandidatosCrud.Candidatos[posicion], puesto);
-            reclutadora.VerificarStatusDePuesto(puesto);
+            await _candidatoPuestoRepository.AddSubscripcion(new CandidatoPuesto { CandidatoId = candidatoId, PuestoId = puestoId });
             
             return RedirectToAction("ViewCandidatos");
         }
 
-        public IActionResult DesuscripcionPuesto(int posicion)
+        public async Task<IActionResult> DesuscripcionPuesto(Guid candidatoId)
         {
-            var puestos = from puesto in reclutadora.GetPuestosSuscritos(CandidatosCrud.Candidatos[posicion].Cedula)
-                          select puesto;
+            var puestos = await _candidatoPuestoRepository.PuestosPorCandidato(candidatoId);
 
-            ViewBag.posicion = posicion;
-            ViewBag.mensaje = reclutadora.GetPuestosSuscritos(CandidatosCrud.Candidatos[posicion].Cedula).Count > 0 ? "" : "Este candidato no esta suscrito a ningun puesto";
+            ViewBag.mensaje = puestos.Count > 0 ? "" : "Este candidato no esta suscrito a ningun puesto";
+            ViewBag.candidatoId = candidatoId;
 
             return View(puestos);
         }
 
-        public IActionResult CandidatosPuesto(string codigo)
+        public async Task<IActionResult> CandidatosPuesto(Guid puestoId)
         {
-            var res = reclutadora.GetCandidatosPuesto(codigo);
+            var res = await _candidatoPuestoRepository.CandidatosPorPuesto(puestoId);
 
             return View(res);
         }
 
-        public IActionResult ProcessDesuscripcion(string codigo, int posicion)
+        public async Task<IActionResult> ProcessDesuscripcion(Guid puestoId, Guid candidatoId)
         {
-            Puesto puesto = PuestosCrud.BuscarPuestoPorCodigo(codigo);
-            reclutadora.Desuscribir(CandidatosCrud.Candidatos[posicion], puesto);
+            var found = await _candidatoPuestoRepository.GetAll().Where(x => x.CandidatoId == candidatoId && x.PuestoId == puestoId).FirstOrDefaultAsync();
+            await _candidatoPuestoRepository.RemoveSubscripcion(found.Id);
             return RedirectToAction("ViewCandidatos");
-        }
-
-
-        public void Agregar5Puestos()
-        {
-            puestos.Add(new Puesto() { Nombre = "Backend C# Developer", Codigo = "1", Salario = 5000, Status = "Vacante" });
-
-            puestos.Add(new Puesto() { Nombre = "Frontend Developer", Codigo = "2", Salario = 4800, Status = "Vacante" });
-
-            puestos.Add(new Puesto() { Nombre = "Software Engineer", Codigo = "3", Salario = 5500, Status = "Vacante" });
-
-            puestos.Add(new Puesto() { Nombre = "Data Scientist", Codigo = "4", Salario = 6000, Status = "Vacante" });
-
-            puestos.Add(new Puesto() { Nombre = "DevOps Engineer", Codigo = "5", Salario = 5800, Status = "Vacante" });
-        }
-
-        public void Agregar10Candidatos()
-        {
-            // Agregar candidatos de ejemplo
-            candidatos.Add(new Candidato
-            {
-                Cedula = "123456789",
-                Nombre = "María García",
-                Correo = "maria.garcia@example.com",
-                AspiracionSalarialMinima = 2000
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "987654321",
-                Nombre = "Carlos Fernández",
-                Correo = "cfernandez@example.com",
-                AspiracionSalarialMinima = 1800
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "456789123",
-                Nombre = "Ana Rodríguez",
-                Correo = "anarod@example.com",
-                AspiracionSalarialMinima = 2200
-            });
-
-            // Agregar otros candidatos de forma similar
-            candidatos.Add(new Candidato
-            {
-                Cedula = "654321987",
-                Nombre = "Juan López",
-                Correo = "juan.lopez@example.com",
-                AspiracionSalarialMinima = 1900
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "789123456",
-                Nombre = "Laura Martínez",
-                Correo = "laura.martinez@example.com",
-                AspiracionSalarialMinima = 2100
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "321654987",
-                Nombre = "Pedro Díaz",
-                Correo = "pdiaz@example.com",
-                AspiracionSalarialMinima = 1950
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "135792468",
-                Nombre = "Sofía López",
-                Correo = "slo@example.com",
-                AspiracionSalarialMinima = 2050
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "246813579",
-                Nombre = "Miguel González",
-                Correo = "mgonzalez@example.com",
-                AspiracionSalarialMinima = 1980
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "9876543210",
-                Nombre = "Elena Sánchez",
-                Correo = "elenas@example.com",
-                AspiracionSalarialMinima = 2250
-            });
-
-            candidatos.Add(new Candidato
-            {
-                Cedula = "123098765",
-                Nombre = "David Pérez",
-                Correo = "david.perez@example.com",
-                AspiracionSalarialMinima = 1800
-            });
         }
     }
 }

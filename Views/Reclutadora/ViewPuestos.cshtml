@@ -31,11 +31,11 @@
                     <dd>@Html.DisplayFor(modelItem => item.Status)</dd>
                 </dl>
 
-                @Html.ActionLink("Editar cargo", "EditPuesto", "Reclutadora", new { posicion }, new { @class = "btn-editar" })
+                @Html.ActionLink("Editar cargo", "EditPuesto", "Reclutadora", new { puestoId = item.Id }, new { @class = "btn-editar" })
 
                 <br />
                 <br />
-                @Html.ActionLink("Candidatos", "CandidatosPuesto", "Reclutadora", new { item.Codigo }, new { @class = "btn-desuscribir" })
+                @Html.ActionLink("Candidatos", "CandidatosPuesto", "Reclutadora", new { puestoId = item.Id }, new { @class = "btn-desuscribir" })
 
             </article>
         }

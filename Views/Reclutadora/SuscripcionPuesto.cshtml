@@ -23,7 +23,7 @@
                     <dd>@Html.DisplayFor(modelItem => item.Status)</dd>
                 </dl>
 
-                @Html.ActionLink("Suscribirme", "ProcessSuscripcion", "Reclutadora", new { codigo = item.Codigo, posicion = ViewBag.posicion }, new { @class = "btn-editar", id = "open" })
+                @Html.ActionLink("Suscribirme", "ProcessSuscripcion", "Reclutadora", new { puestoId = item.Id, candidatoId = ViewBag.candidatoId }, new { @class = "btn-editar", id = "open" })
 
                 <br />
                 <br />
